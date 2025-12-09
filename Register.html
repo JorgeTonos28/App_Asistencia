@@ -1,0 +1,72 @@
+<!DOCTYPE html><html>
+<head>
+  <meta charset="utf-8">
+  <title>Registro de Asistencia</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  
+  <!-- Script anti-wrapper (responsive fix) -->
+  <script>
+  (function(){
+    try{
+      // Si estamos embebidos (iframe del editor de Google) y la pantalla es pequeña → salir al top
+      var isFramed = (window.top !== window.self);
+      var isSmall = Math.max(screen.width, screen.height) <= 880;
+      if (isFramed && isSmall) {
+        window.top.location.href = window.location.href;
+      }
+    }catch(e){}
+  })();
+  </script>
+  
+  <?!= include_('css'); ?>
+</head>
+<body class="container">
+  <header class="card" style="text-align:center">
+    <img id="logoInfotep" alt="INFOTEP" />
+    <h1><?= evento.nombre ?></h1>
+    <p id="fechaLarga"></p>
+  </header>
+
+  <section class="card">
+    <div class="row g inputs-line">
+      <input id="codigo" placeholder="Código (empleado) *" />
+      <input id="nombre" placeholder="Nombre completo *" />
+      <input id="correo" type="email" placeholder="Correo electrónico *" />
+      <input id="tel" placeholder="Número de teléfono" />
+      <button id="btnResetFormPublic" class="icon-btn purple" title="Restablecer formulario" aria-label="Restablecer formulario">
+        <span class="ico">↺</span>
+      </button>
+    </div>
+
+    <p>Firma digital *</p>
+    <div class="sig-wrap">
+      <canvas id="pad" class="sig"></canvas>
+    </div>
+    <div class="sig-actions">
+      <button id="btnLimpiar" class="btn btn-danger">Limpiar</button>
+      <button id="btnEnviar" class="btn btn-success">Completar Registro</button>
+    </div>
+  </section>
+
+  <!-- Modal simple -->
+  <div id="modal" class="overlay" hidden>
+    <div class="card" style="max-width:420px;text-align:center">
+      <p id="modalMsg" style="margin:10px 0 16px;"></p>
+      <button id="modalOk">Aceptar</button>
+    </div>
+  </div>
+
+  <!-- Overlay de proceso -->
+  <div id="overlay" class="overlay" hidden>
+    <div class="spinner"></div>
+    <div class="overlay-msg">Procesando…</div>
+  </div>
+
+  <?!= include_('signaturepad.min.js'); ?>
+  <?!= include_('register.js'); ?>
+  <script>
+    window.__EVENT_ID__ = "<?= evento.id ?>";
+    window.__EVENT_FECHA__ = "<?= evento.fecha ?>";
+    window.__LOGO_URL__ = "<?= logoUrl ?>";
+  </script>
+</body></html>

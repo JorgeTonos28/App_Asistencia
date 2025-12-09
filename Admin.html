@@ -1,0 +1,92 @@
+<!DOCTYPE html><html>
+<head>
+  <meta charset="utf-8">
+  <title>Asistencias – Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Script anti-wrapper (responsive fix) -->
+  <script>
+  (function(){
+    try{
+      // Si estamos embebidos (iframe del editor de Google) y la pantalla es pequeña → salir al top
+      var isFramed = (window.top !== window.self);
+      var isSmall = Math.max(screen.width, screen.height) <= 880;
+      if (isFramed && isSmall) {
+        window.top.location.href = window.location.href;
+      }
+    }catch(e){}
+  })();
+  </script>
+
+  <?!= include_('css'); ?>
+</head>
+<body class="container">
+  <header>
+    <h2>Crear nuevo evento</h2>
+    <div class="row g">
+      <input id="evNombre" placeholder="Nombre del evento" />
+      <input id="evFecha" type="date" />
+      <input id="evMax" type="number" placeholder="Cupo máximo" min="0"/>
+      <button id="btnCrear">Crear</button>
+    </div>
+  </header>
+
+  <section class="card">
+    <h1>Eventos activos</h1>
+    <div id="eventosActivos"></div>
+
+    <div class="row g">
+      <label>Evento seleccionado:
+        <select id="selEvento"></select>
+      </label>
+      <div>
+        <small>Fecha del evento: <strong id="fechaEventoTxt">—</strong></small>
+      </div>
+      <button id="btnGenerarLista">Generar Lista</button>
+      <button id="btnGenerarLink">Generar Link</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Agregar participante (admin)</h2>
+    <div class="row g inputs-line">
+      <input id="pCodigo" placeholder="Código (empleado) *" />
+      <input id="pNombre" placeholder="Nombre completo *" />
+      <input id="pCorreo" type="email" placeholder="Correo electrónico *" />
+      <input id="pTel" placeholder="Número de teléfono" />
+      <!-- Botón pequeño, morado, junto al teléfono -->
+      <button id="btnResetFormAdmin" class="icon-btn purple" title="Restablecer formulario" aria-label="Restablecer formulario">
+        <span class="ico">↺</span>
+      </button>
+    </div>
+
+    <div>
+      <p>Firma digital:</p>
+      <div class="sig-wrap">
+        <canvas id="pad" class="sig"></canvas>
+      </div>
+      <div class="sig-actions">
+        <button id="btnLimpiar" class="btn btn-danger">Limpiar</button>
+        <button id="btnFirmar" class="btn btn-success">Firmar</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Lista de participantes</h2>
+    <div id="lista"></div>
+  </section>
+
+  <section class="card">
+    <h2>Historial de listas generadas</h2>
+    <div id="historial"></div>
+  </section>
+
+  <div id="overlay" class="overlay" hidden>
+    <div class="spinner"></div>
+    <div class="overlay-msg">Procesando…</div>
+  </div>
+
+  <?!= include_('signaturepad.min.js'); ?>
+  <?!= include_('admin.js'); ?>
+</body></html>

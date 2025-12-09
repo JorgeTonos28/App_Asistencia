@@ -1,0 +1,145 @@
+<script>
+let sigPad;
+const $ = s => document.querySelector(s);
+
+// Busy manager (overlay)
+const Busy = (() => {
+  let pending = 0;
+  const el = () => $('#overlay');
+  function show(msg){ const o=el(); if(!o) return; o.querySelector('.overlay-msg').textContent = msg||'Procesando…'; pending++; o.hidden=false; }
+  function hide(){ const o=el(); if(!o) return; pending=Math.max(0,pending-1); if(pending===0) o.hidden=true; }
+  function reset(){ const o=el(); if(!o) return; pending=0; o.hidden=true; }
+  return {show, hide, reset};
+})();
+
+function showModal(msg){ $('#modalMsg').textContent = msg; $('#modal').hidden=false; }
+function hideModal(){ $('#modal').hidden = true; }
+
+function esFechaLarga(d){
+  const opts = { weekday:'long', year:'numeric', month:'long', day:'numeric' };
+  const s = new Date(d).toLocaleDateString('es-DO', opts);
+  const p = s.replace(',', '').split(' ');
+  if (p.length >= 6){ p[0]=cap(p[0]); p[3]=cap(p[3]); p[4]='del'; return `${p[0]} ${p[1]} ${p[2]} ${p[3]} ${p[4]} ${p[5]}`;}
+  return s;
+}
+function cap(x){ return x.charAt(0).toUpperCase()+x.slice(1); }
+
+function init(){
+  // Firma
+  const canvas = document.getElementById('pad');
+  sigPad = new SignaturePad(canvas);
+  $('#btnLimpiar').onclick = ()=>sigPad.clear();
+  $('#btnEnviar').onclick = enviar;
+  $('#modalOk').onclick = hideModal;
+
+  // Mostramos overlay y lo quitamos SOLO cuando el logo termine (o falle)
+  Busy.show('Cargando…');
+
+  const btnResetPublic = document.getElementById('btnResetFormPublic');
+  if (btnResetPublic) btnResetPublic.onclick = resetFormularioPublico;
+
+  // 1) Cargar logo como promesa
+  const logo = document.getElementById('logoInfotep');
+  const logoReady = new Promise((resolve)=>{
+    let resolved = false;
+    function done(){ if (!resolved){ resolved = true; resolve(); } }
+
+    google.script.run
+      .withSuccessHandler((dataUrl)=>{
+        if (dataUrl){
+          // Cuando el <img> termine de pintar, resolvemos
+          logo.onload = () => { logo.onload = logo.onerror = null; done(); };
+          logo.onerror = () => { logo.onload = logo.onerror = null; done(); };
+          logo.src = dataUrl;
+          logo.style.height = '72px'; // ajusta si quieres 64/80…
+        } else {
+          // Fallback: placeholder de texto
+          logo.remove();
+          const ph = document.createElement('div');
+          ph.textContent = 'INFOTEP';
+          ph.style.fontWeight = '700';
+          ph.style.fontSize = '18px';
+          ph.style.marginBottom = '6px';
+          document.querySelector('header.card').prepend(ph);
+          done();
+        }
+      })
+      .withFailureHandler(()=>{ done(); }) // si falla, seguimos y quitamos overlay
+      .getLogoDataUrl(128);
+
+    // Failsafe si algo se queda colgado (p. ej. red muy lenta)
+    setTimeout(done, 6000);
+  });
+
+  // 2) Cuando el logo está listo, terminamos de setear fecha y ocultamos overlay
+  logoReady.then(()=>{
+    document.getElementById('fechaLarga').innerText = 'Fecha: ' + esFechaLarga(window.__EVENT_FECHA__);
+    Busy.reset();
+  });
+
+  // Autocompletar por Código
+  const cod = $('#codigo');
+  cod.addEventListener('change', lookupCodigo);
+  cod.addEventListener('blur', lookupCodigo);
+}
+
+function lookupCodigo(){
+  const codigo = $('#codigo').value.trim();
+  if (!codigo) return;
+  Busy.show('Buscando datos…');
+  google.script.run
+    .withSuccessHandler((res)=>{
+      Busy.hide();
+      if (res && res.ok && res.participante){
+        $('#nombre').value = res.participante.nombre || '';
+        $('#correo').value = res.participante.correo || '';
+        $('#tel').value    = res.participante.telefono || '';
+      } else {
+        // no encontrado: dejamos los campos como estén
+      }
+    })
+    .withFailureHandler((err)=>{ Busy.hide(); console.error('[findParticipanteByCodigo] FALLÓ', err); })
+    .findParticipanteByCodigo(codigo);
+}
+
+function enviar(){
+  const codigo = $('#codigo').value.trim();
+  const nombre = $('#nombre').value.trim();
+  const correo = $('#correo').value.trim();
+  const telefono = $('#tel').value.trim();
+
+  if (!codigo || !nombre || !correo || sigPad.isEmpty()){
+    showModal('Completa código, nombre, correo y firma.');
+    return;
+  }
+
+  const firma_b64 = sigPad.toDataURL();
+
+  Busy.show('Registrando asistencia…');
+  google.script.run
+    .withSuccessHandler((res)=>{
+      Busy.hide();
+      if (typeof res === 'string'){ try{ res = JSON.parse(res); }catch{} }
+      if (res && res.ok){
+        sigPad.clear(); $('#codigo').value=''; $('#nombre').value=''; $('#correo').value=''; $('#tel').value='';
+        showModal('¡Registro completado! Gracias.');
+      } else if (res && res.code==='DUPLICATE'){
+        showModal('Ya estás registrado para este evento.');
+      } else {
+        showModal('No se pudo registrar: ' + (res && (res.msg||res.error) || 'Error desconocido'));
+      }
+    })
+    .withFailureHandler((err)=>{ Busy.hide(); console.error('[public registrar] FALLÓ', err); showModal('Error al registrar. Intenta de nuevo.'); })
+    .registrarAsistencia({event_id: window.__EVENT_ID__, codigo, nombre, correo, telefono, firma_b64, via:'public'});
+}
+
+function resetFormularioPublico(){
+  $('#codigo').value = '';
+  $('#nombre').value = '';
+  $('#correo').value = '';
+  $('#tel').value = '';
+  if (sigPad && typeof sigPad.clear === 'function') sigPad.clear();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
