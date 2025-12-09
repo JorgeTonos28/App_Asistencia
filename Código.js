@@ -4,7 +4,7 @@ const SH_EVT = SS.getSheetByName('Eventos');
 const SH_PAR = SS.getSheetByName('Participantes');
 const SH_ASI = SS.getSheetByName('Asistencias');
 const SH_LIS = SS.getSheetByName('Listas');
-const APP_VERSION = 'historial-v3-2025-10-13';
+const APP_VERSION = 'historial-v4-optimized-2025-10-14';
 
 function pingVersion(){
   return { ok:true, v: APP_VERSION };
@@ -56,9 +56,15 @@ function doGet(e) {
     if (!ev) return HtmlService.createHtmlOutput('<h3>Evento no encontrado</h3>');
     if (ev.estado !== 'ABIERTO') return HtmlService.createHtmlOutput('<h3>Este evento está cerrado.</h3>');
     
+    // Check if user is already registered
+    const { isRegistered, participantName } = getUserStatusForEvent(ev.id, me);
+
     const t = HtmlService.createTemplateFromFile('Register');
     t.evento = ev;
     t.logoUrl = getLogoUrl();
+    t.isRegistered = isRegistered;
+    t.participantName = participantName || '';
+    t.userEmail = me;
 
     // 👇 Se añade meta viewport aquí para forzar responsive en móviles
     return t.evaluate()
@@ -134,6 +140,21 @@ function closeEvento(eventId){
 
 // ====== PARTICIPANTES & ASISTENCIAS ======
 
+function getUserStatusForEvent(eventId, email){
+  if (!email) return { isRegistered: false };
+  const pid = findParticipanteIdByEmail_(email);
+  if (!pid) return { isRegistered: false };
+
+  // Check if registered
+  const isReg = alreadyRegistered_(eventId, pid);
+  let name = '';
+  if (isReg) {
+     const p = findParticipanteById_(pid);
+     if (p) name = p.nombre;
+  }
+  return { isRegistered: isReg, participantName: name };
+}
+
 function registrarAsistencia({event_id, codigo, nombre, correo, telefono, firma_b64, via}){
   const ev = getEventoById_(event_id);
   if (!ev) return {ok:false, msg:'Evento inválido'};
@@ -175,7 +196,16 @@ function upsertParticipante({codigo, nombre, correo, telefono}){
   } else {
     id = vals[rowIndex][0];
     const row = rowIndex+2;
-    SH_PAR_.getRange(row,1,1,6).setValues([[id, codigo||vals[rowIndex][1], nombre||vals[rowIndex][2], correo||vals[rowIndex][3], telefono||vals[rowIndex][4], vals[rowIndex][5] ]]);
+    // Update existing
+    const existing = vals[rowIndex];
+    SH_PAR_.getRange(row,1,1,6).setValues([[
+        id,
+        codigo || existing[1],
+        nombre || existing[2],
+        correo || existing[3],
+        telefono || existing[4],
+        existing[5]
+    ]]);
   }
   return id;
 }
@@ -248,7 +278,7 @@ function generarLista(eventId){
 
     // ======= PARÁMETROS AJUSTABLES (con proporción automática) =======
     const LOGO_LONG = 180;   // Lado “largo” objetivo del logo (px)
-    const SIG_LONG  = 50;   // Lado “largo” objetivo de cada firma (px)
+    const SIG_LONG  = 50;    // Lado “largo” objetivo de cada firma (px)
     const SIG_PADDING = 3;   // Margen interno alrededor de la firma
 
     const COL_W_TEXT  = 180; // Ancho columnas texto (1..4)
@@ -287,20 +317,36 @@ function generarLista(eventId){
     sh.setColumnWidths(1, 4, COL_W_TEXT);
     sh.setColumnWidth(5, COL_W_FIRMA);
 
-    // --- 3) Escribe filas con HYPERLINK (para Excel) ---
-    let r = 5;
-    data.forEach(d=>{
-      sh.getRange(r,1,1,4).setValues([[d.codigo||'', d.nombre||'', d.correo||'', d.telefono||'']]);
-      centerRange_(sh.getRange(r,1,1,4));
-      const url = String(d.firma_url||'').trim();
-      if (url){
-        sh.getRange(r,5).setFormula('=HYPERLINK("' + url.replace(/"/g,'""') + '","Ver firma")');
-      } else {
-        sh.getRange(r,5).setValue('');
-      }
-      if (r%2===1) sh.getRange(r,1,1,5).setBackground('#fafafa');
-      r++;
+    // --- 3) Preparar datos para inserción en bloque ---
+    // Preparamos array de valores de texto para escribir de una sola vez
+    const textValues = data.map(d => [d.codigo||'', d.nombre||'', d.correo||'', d.telefono||'']);
+
+    // Escribir texto en bloque
+    if (textValues.length > 0) {
+      sh.getRange(5, 1, textValues.length, 4).setValues(textValues);
+      sh.getRange(5, 1, textValues.length, 4).setHorizontalAlignment('center').setVerticalAlignment('middle');
+
+      // Aplicar color de fondo alterno
+      // Lamentablemente setBackgrounds requiere una matriz completa, o loop. Loop de propiedades no es tan lento.
+      // Pero mejor usar Conditional Formatting o simplemente loop rápido.
+      // Para optimizar, construimos matrix de fondos
+      const backgrounds = textValues.map((_, i) => {
+         const color = (i + 5) % 2 === 1 ? '#fafafa' : '#ffffff';
+         return [color, color, color, color, color]; // 5 columnas
+      });
+      sh.getRange(5, 1, backgrounds.length, 5).setBackgrounds(backgrounds);
+    }
+
+    // Insertar hyperlinks (lamentablemente setFormula no tiene setFormulas con array mixto facil si hay vacios,
+    // pero podemos hacer setFormulas de una columna)
+    const urlFormulas = data.map(d => {
+       const url = String(d.firma_url||'').trim();
+       return [ url ? '=HYPERLINK("' + url.replace(/"/g,'""') + '","Ver firma")' : '' ];
     });
+    if (urlFormulas.length > 0){
+       sh.getRange(5, 5, urlFormulas.length, 1).setFormulas(urlFormulas);
+       sh.getRange(5, 5, urlFormulas.length, 1).setHorizontalAlignment('center').setVerticalAlignment('middle');
+    }
 
     // BORDES
     const tableRange = sh.getRange(4,1,Math.max(1, data.length)+1,5);
@@ -328,48 +374,88 @@ function generarLista(eventId){
       xlsxFile = repFolder.createFile(xlsxResp.getBlob().setName(`Lista_${ev.id}.xlsx`));
     }
 
-    // --- 5) Reemplazar col 5 por IMÁGENES (para el PDF) — SIN getResizedBlob_ ---
-    if (data.length) sh.getRange(5,5,data.length,1).clearContent();
-    r = 5;
-    data.forEach(d=>{
-      const m = String(d.firma_url||'').match(/[\?&]id=([a-zA-Z0-9_-]+)/);
-      const fileId = m ? m[1] : null;
-      if (fileId){
-        try{
-          let raw = DriveApp.getFileById(fileId).getBlob();
-          if (!/png|jpeg|jpg/i.test(raw.getContentType())) raw = raw.setContentType('image/png');
+    // --- 5) Reemplazar col 5 por IMÁGENES (para el PDF) ---
+    // OPTIMIZACIÓN: Fetch all signatures in parallel
+    if (data.length > 0) {
+       sh.getRange(5,5,data.length,1).clearContent();
 
-          // Calcula proporción por lado largo SIG_LONG
-          let iw=0, ih=0;
-          try{ const img = ImagesService.open(raw); iw = img.getWidth(); ih = img.getHeight(); }catch(e){}
-          let targetW = SIG_LONG, targetH = SIG_LONG;
-          if (iw && ih){
-            const s = Math.min(SIG_LONG / Math.max(iw, ih), 1);
-            targetW = Math.max(1, Math.floor(iw * s));
-            targetH = Math.max(1, Math.floor(ih * s));
+       // Recolectar URLs de descarga de imágenes
+       // firma_url usualmente es "https://drive.google.com/uc?export=view&id=..."
+       // Podemos usar esa URL directamente con UrlFetchApp
+
+       // Preparar Requests
+       const requests = data.map(d => {
+         const url = String(d.firma_url||'').trim();
+         // Asegurar que usamos el endpoint de descarga que retorna la imagen
+         if (!url) return null;
+         return {
+           url: url,
+           method: 'get',
+           muteHttpExceptions: true
+         };
+       }).filter(r => r !== null);
+
+       // Ejecutar fetchAll
+       // NOTA: UrlFetchApp tiene límites de tamaño y cantidad. Si son muchas firmas (>50),
+       // convendría hacer lotes (chunks).
+       const CHUNK_SIZE = 40;
+       const blobsMap = {}; // map url -> blob
+
+       for (let i = 0; i < requests.length; i += CHUNK_SIZE) {
+          const chunk = requests.slice(i, i + CHUNK_SIZE);
+          const responses = UrlFetchApp.fetchAll(chunk);
+          responses.forEach((resp, idx) => {
+             if (resp.getResponseCode() === 200) {
+                const req = chunk[idx];
+                let blob = resp.getBlob();
+                if (!/png|jpeg|jpg/i.test(blob.getContentType())) blob = blob.setContentType('image/png');
+                blobsMap[req.url] = blob;
+             }
+          });
+       }
+
+       // Insertar imágenes en bucle (SpreadsheetApp no tiene insertImageBatch)
+       // Pero ya tenemos los blobs en memoria, así que será mucho más rápido que ir a DriveApp uno por uno.
+       let r = 5;
+       data.forEach(d => {
+          const url = String(d.firma_url||'').trim();
+          const blob = blobsMap[url];
+
+          if (blob) {
+             try {
+                // Cálculo de dimensiones
+                // ImagesService puede fallar con blobs corruptos o vacíos
+                let iw=0, ih=0;
+                try{ const img = ImagesService.open(blob); iw = img.getWidth(); ih = img.getHeight(); }catch(e){}
+
+                let targetW = SIG_LONG, targetH = SIG_LONG;
+                if (iw && ih){
+                  const s = Math.min(SIG_LONG / Math.max(iw, ih), 1);
+                  targetW = Math.max(1, Math.floor(iw * s));
+                  targetH = Math.max(1, Math.floor(ih * s));
+                }
+
+                // placeImageCenteredInCell_ hace resize de celda si es necesario
+                placeImageCenteredInCell_(sh, blob, r, 5, targetW, targetH, SIG_PADDING);
+
+                // Asegura altura de fila suficiente (batch setRowHeights es posible pero complejo de calcular antes)
+                const needH = targetH + SIG_PADDING*2;
+                if (sh.getRowHeight(r) < needH) sh.setRowHeight(r, needH);
+             } catch(e) {
+                // Ignore image error
+             }
           }
-          placeImageCenteredInCell_(sh, raw, r, 5, targetW, targetH, SIG_PADDING);
-
-          // Asegura altura de fila suficiente
-          const needH = targetH + SIG_PADDING*2;
-          if (sh.getRowHeight(r) < needH) sh.setRowHeight(r, needH);
-        }catch(e){
-          centerRange_(sh.getRange(r,5,1,1));
-        }
-      } else {
-        centerRange_(sh.getRange(r,5,1,1));
-        const needH = SIG_LONG + SIG_PADDING*2;
-        if (sh.getRowHeight(r) < needH) sh.setRowHeight(r, needH);
-      }
-      r++;
-    });
+          r++;
+       });
+    }
 
     // re-bordes por si el insert tocó algo
     tableRange.setBorder(true,true,true,true,true,true,'#cbd5e1',SpreadsheetApp.BorderStyle.SOLID);
 
     // Asegura persistencia + render de imágenes
     SpreadsheetApp.flush();
-    Utilities.sleep(900);
+    // Esperar un poco para que el servidor de hojas renderice las imágenes antes de imprimir PDF
+    Utilities.sleep(2000);
 
     // --- 6) Exportar PDF apaisado (gid + fit-to-width) ---
     const pdfResp = UrlFetchApp.fetch(baseExport + '?format=pdf&portrait=false&gid=' + gid + commonQs, {
@@ -828,6 +914,24 @@ function findParticipanteByCodigo(codigo){
   }catch(e){
     return {ok:false, msg:String(e && e.message || e)};
   }
+}
+
+function findParticipanteIdByEmail_(email){
+  const SH_PAR_ = sh_('Participantes');
+  const lr = SH_PAR_.getLastRow();
+  if (lr < 2) return null;
+  const vals = SH_PAR_.getRange(2,1,lr-1,6).getValues();
+  const row = vals.find(v => String(v[3]).trim().toLowerCase() === String(email).trim().toLowerCase());
+  return row ? row[0] : null;
+}
+
+function findParticipanteById_(id){
+  const SH_PAR_ = sh_('Participantes');
+  const lr = SH_PAR_.getLastRow();
+  if (lr < 2) return null;
+  const vals = SH_PAR_.getRange(2,1,lr-1,6).getValues();
+  const row = vals.find(v => v[0] === id);
+  return row ? { id:row[0], codigo:row[1], nombre:row[2], correo:row[3], telefono:row[4] } : null;
 }
 
 function testLogo(){

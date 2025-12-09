@@ -1,14 +1,14 @@
-<!DOCTYPE html><html>
+<!DOCTYPE html>
+<html lang="es">
 <head>
   <meta charset="utf-8">
   <title>Registro de Asistencia</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
   
-  <!-- Script anti-wrapper (responsive fix) -->
+  <!-- Anti-wrapper fix -->
   <script>
   (function(){
     try{
-      // Si estamos embebidos (iframe del editor de Google) y la pantalla es pequeña → salir al top
       var isFramed = (window.top !== window.self);
       var isSmall = Math.max(screen.width, screen.height) <= 880;
       if (isFramed && isSmall) {
@@ -19,47 +19,151 @@
   </script>
   
   <?!= include_('css'); ?>
+
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="container">
-  <header class="card" style="text-align:center">
-    <img id="logoInfotep" alt="INFOTEP" />
-    <h1><?= evento.nombre ?></h1>
-    <p id="fechaLarga"></p>
-  </header>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col items-center justify-start pt-6 pb-12 px-4">
 
-  <section class="card">
-    <div class="row g inputs-line">
-      <input id="codigo" placeholder="Código (empleado) *" />
-      <input id="nombre" placeholder="Nombre completo *" />
-      <input id="correo" type="email" placeholder="Correo electrónico *" />
-      <input id="tel" placeholder="Número de teléfono" />
-      <button id="btnResetFormPublic" class="icon-btn purple" title="Restablecer formulario" aria-label="Restablecer formulario">
-        <span class="ico">↺</span>
-      </button>
+  <!-- Main Container -->
+  <main class="w-full max-w-lg space-y-6 opacity-0 animate-fade-in">
+
+    <!-- Header Card -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-100 p-8 text-center relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-brand-400 to-brand-600"></div>
+
+        <!-- Logo -->
+        <div class="flex justify-center mb-5">
+            <img id="logoInfotep" alt="Logo" class="h-16 object-contain" />
+        </div>
+
+        <h1 class="text-2xl font-bold text-slate-900 mb-2 leading-tight"><?= evento.nombre ?></h1>
+        <p id="fechaLarga" class="text-slate-500 font-medium"></p>
     </div>
 
-    <p>Firma digital *</p>
-    <div class="sig-wrap">
-      <canvas id="pad" class="sig"></canvas>
-    </div>
-    <div class="sig-actions">
-      <button id="btnLimpiar" class="btn btn-danger">Limpiar</button>
-      <button id="btnEnviar" class="btn btn-success">Completar Registro</button>
-    </div>
-  </section>
+    <!-- Status Card (Already Registered) -->
+    <? if (isRegistered) { ?>
+    <div id="statusCard" class="bg-emerald-50 rounded-2xl shadow border border-emerald-100 p-6 animate-slide-up">
+        <div class="flex flex-col items-center text-center">
+            <div class="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 mb-4">
+                <i class="fa-solid fa-check text-2xl"></i>
+            </div>
+            <h2 class="text-lg font-bold text-emerald-800 mb-1">¡Registro Confirmado!</h2>
+            <p class="text-emerald-700 text-sm mb-6">
+               Hola <span class="font-semibold"><?= participantName ?></span>, ya tienes tu asistencia registrada para este evento.
+            </p>
 
-  <!-- Modal simple -->
-  <div id="modal" class="overlay" hidden>
-    <div class="card" style="max-width:420px;text-align:center">
-      <p id="modalMsg" style="margin:10px 0 16px;"></p>
-      <button id="modalOk">Aceptar</button>
+            <button id="btnRegisterOther" class="w-full bg-white text-emerald-700 font-semibold py-3 px-4 rounded-xl border border-emerald-200 hover:bg-emerald-50 hover:shadow transition-all duration-200 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-user-plus"></i> Registrar a otra persona
+            </button>
+        </div>
+    </div>
+    <? } ?>
+
+    <!-- Registration Form -->
+    <!-- Hidden initially if registered, shown otherwise -->
+    <div id="formCard" class="bg-white rounded-2xl shadow-lg border border-slate-100 p-6 md:p-8 animate-slide-up <? if (isRegistered) { ?>hidden<? } ?>">
+
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-bold text-slate-800">Formulario de Registro</h3>
+            <button id="btnResetFormPublic" class="text-slate-400 hover:text-brand-600 transition-colors p-2 rounded-full hover:bg-slate-50" title="Limpiar formulario">
+                <i class="fa-solid fa-rotate-right"></i>
+            </button>
+        </div>
+
+        <div class="space-y-4">
+            <!-- Código -->
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Código (Empleado/Participante)</label>
+                <div class="relative">
+                    <span class="absolute left-4 top-3.5 text-slate-400"><i class="fa-solid fa-id-card"></i></span>
+                    <input id="codigo" type="text" placeholder="Ej. 102030"
+                        class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all outline-none" required />
+                </div>
+            </div>
+
+            <!-- Nombre -->
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Nombre Completo</label>
+                <div class="relative">
+                    <span class="absolute left-4 top-3.5 text-slate-400"><i class="fa-solid fa-user"></i></span>
+                    <input id="nombre" type="text" placeholder="Tu nombre"
+                        class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all outline-none" required />
+                </div>
+            </div>
+
+            <!-- Correo -->
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Correo Electrónico</label>
+                <div class="relative">
+                    <span class="absolute left-4 top-3.5 text-slate-400"><i class="fa-solid fa-envelope"></i></span>
+                    <input id="correo" type="email" placeholder="correo@ejemplo.com"
+                        class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all outline-none" required />
+                </div>
+            </div>
+
+            <!-- Teléfono -->
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Teléfono <span class="text-slate-400 font-normal">(Opcional)</span></label>
+                <div class="relative">
+                    <span class="absolute left-4 top-3.5 text-slate-400"><i class="fa-solid fa-phone"></i></span>
+                    <input id="tel" type="tel" placeholder="(809) 000-0000"
+                        class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all outline-none" />
+                </div>
+            </div>
+
+            <!-- Firma -->
+            <div class="pt-2">
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Firma Digital <span class="text-red-500">*</span></label>
+                <div class="w-full bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl overflow-hidden relative group hover:border-brand-400 transition-colors">
+                    <canvas id="pad" class="w-full h-48 cursor-crosshair touch-none block"></canvas>
+                    <div class="absolute bottom-2 right-2 opacity-50 text-xs text-slate-400 pointer-events-none select-none">Firma aquí</div>
+                </div>
+                <div class="flex justify-end mt-2">
+                     <button id="btnLimpiar" class="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1">
+                        <i class="fa-solid fa-eraser"></i> Borrar firma
+                     </button>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="pt-4">
+                <button id="btnEnviar" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-brand-500/30 transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2">
+                    <span>Completar Registro</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center text-slate-400 text-xs pb-4">
+        &copy; <?= new Date().getFullYear() ?>
+    </footer>
+
+  </main>
+
+  <!-- Modal -->
+  <div id="modal" class="fixed inset-0 z-50 flex items-center justify-center hidden" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onclick="hideModal()"></div>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 relative z-10 animate-slide-up">
+        <div class="text-center">
+            <div class="w-16 h-16 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-bell text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-800 mb-2" id="modalTitle">Atención</h3>
+            <p id="modalMsg" class="text-slate-600 mb-6"></p>
+            <button id="modalOk" class="w-full bg-slate-900 text-white font-semibold py-3 rounded-xl hover:bg-slate-800 transition-colors">
+                Entendido
+            </button>
+        </div>
     </div>
   </div>
 
-  <!-- Overlay de proceso -->
-  <div id="overlay" class="overlay" hidden>
-    <div class="spinner"></div>
-    <div class="overlay-msg">Procesando…</div>
+  <!-- Loading Overlay -->
+  <div id="overlay" class="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm transition-opacity">
+    <div class="loader ease-linear rounded-full border-4 border-t-4 border-slate-200 h-12 w-12 mb-4"></div>
+    <h2 class="text-center text-slate-600 font-semibold text-lg animate-pulse overlay-msg">Cargando...</h2>
   </div>
 
   <?!= include_('signaturepad.min.js'); ?>
@@ -68,5 +172,7 @@
     window.__EVENT_ID__ = "<?= evento.id ?>";
     window.__EVENT_FECHA__ = "<?= evento.fecha ?>";
     window.__LOGO_URL__ = "<?= logoUrl ?>";
+    window.__USER_IS_REGISTERED__ = <?= isRegistered ? 'true' : 'false' ?>;
   </script>
-</body></html>
+</body>
+</html>
