@@ -391,6 +391,7 @@ function generarLista(eventId){
          return {
            url: url,
            method: 'get',
+           headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
            muteHttpExceptions: true
          };
        }).filter(r => r !== null);
