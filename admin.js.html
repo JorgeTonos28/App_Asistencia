@@ -106,39 +106,48 @@ function init(){
   Busy.reset();
   showBusy('Cargando panel…');
 
-  // Resize canvas
-  const canvas = document.getElementById('pad');
-  sigPad = new SignaturePad(canvas, {
-     backgroundColor: 'rgba(255, 255, 255, 0)',
-     penColor: 'rgb(0, 0, 0)'
-  });
+  // Failsafe: force remove overlay after 4 seconds regardless of errors
+  setTimeout(() => {
+     Busy.reset();
+  }, 4000);
 
-  selEvento = document.getElementById('selEvento');
+  try {
+    // Resize canvas
+    const canvas = document.getElementById('pad');
+    sigPad = new SignaturePad(canvas, {
+       backgroundColor: 'rgba(255, 255, 255, 0)',
+       penColor: 'rgb(0, 0, 0)'
+    });
 
-  const btnResetAdmin = document.getElementById('btnResetFormAdmin');
-  if (btnResetAdmin) btnResetAdmin.onclick = resetFormularioAdmin;
+    selEvento = document.getElementById('selEvento');
 
-  document.getElementById('btnLimpiar').onclick = ()=>sigPad.clear();
-  document.getElementById('btnFirmar').onclick = registrarAdmin;
-  document.getElementById('btnCrear').onclick = crearEvento;
-  document.getElementById('btnGenerarLista').onclick = generarLista;
-  document.getElementById('btnGenerarLink').onclick = generarLink;
+    const btnResetAdmin = document.getElementById('btnResetFormAdmin');
+    if (btnResetAdmin) btnResetAdmin.onclick = resetFormularioAdmin;
 
-  const cod = document.getElementById('pCodigo');
-  cod.addEventListener('change', lookupCodigoAdmin);
-  cod.addEventListener('blur', lookupCodigoAdmin);
+    document.getElementById('btnLimpiar').onclick = ()=>sigPad.clear();
+    document.getElementById('btnFirmar').onclick = registrarAdmin;
+    document.getElementById('btnCrear').onclick = crearEvento;
+    document.getElementById('btnGenerarLista').onclick = generarLista;
+    document.getElementById('btnGenerarLink').onclick = generarLink;
 
-  // Cargar Logo
-  google.script.run.withSuccessHandler(url => {
-     if(url) $('#logoInfotep').src = url;
-     else $('#logoInfotep').remove();
-  }).getLogoDataUrl(128);
+    const cod = document.getElementById('pCodigo');
+    cod.addEventListener('change', lookupCodigoAdmin);
+    cod.addEventListener('blur', lookupCodigoAdmin);
 
-  cargarEventos();
-  cargarHistorialCerrados();
-  
-  setTimeout(()=>{ if (Busy.get()===0) Busy.reset(); }, 5000);
-  setInterval(()=>refrescarListas(), 10000);
+    // Cargar Logo
+    google.script.run.withSuccessHandler(url => {
+       if(url) $('#logoInfotep').src = url;
+       else $('#logoInfotep').remove();
+    }).getLogoDataUrl(128);
+
+    cargarEventos();
+    cargarHistorialCerrados();
+
+    setInterval(()=>refrescarListas(), 10000);
+  } catch(e) {
+    console.error('Init crashed', e);
+    Busy.reset();
+  }
 }
 
 function lookupCodigoAdmin(){

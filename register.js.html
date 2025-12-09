@@ -55,79 +55,100 @@ function esFechaLarga(d){
 }
 
 function init(){
-  // Resize canvas for high DPI
-  resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
-
-  // Firma
-  const canvas = document.getElementById('pad');
-  sigPad = new SignaturePad(canvas, {
-     backgroundColor: 'rgba(255, 255, 255, 0)',
-     penColor: 'rgb(0, 0, 0)'
-  });
-
-  $('#btnLimpiar').onclick = () => sigPad.clear();
-  $('#btnEnviar').onclick = enviar;
-  $('#modalOk').onclick = hideModal;
-
-  // "Register Other" button logic
-  const btnOther = document.getElementById('btnRegisterOther');
-  if(btnOther) {
-     btnOther.onclick = function() {
-        $('#statusCard').classList.add('hidden');
-        $('#formCard').classList.remove('hidden');
-        $('#formCard').classList.add('animate-slide-up');
-     };
-  }
-
   // Initial Overlay
   Busy.show('Cargando…');
 
-  const btnResetPublic = document.getElementById('btnResetFormPublic');
-  if (btnResetPublic) btnResetPublic.onclick = resetFormularioPublico;
+  // Failsafe: force remove overlay after 4 seconds regardless of errors
+  setTimeout(() => {
+     Busy.reset();
+  }, 4000);
 
-  // 1) Cargar logo
-  const logo = document.getElementById('logoInfotep');
-  const logoReady = new Promise((resolve)=>{
-    let resolved = false;
-    function done(){ if (!resolved){ resolved = true; resolve(); } }
+  try {
+    // Resize canvas for high DPI
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
 
-    google.script.run
-      .withSuccessHandler((dataUrl)=>{
-        if (dataUrl){
-          logo.onload = () => { logo.onload = logo.onerror = null; done(); };
-          logo.onerror = () => { logo.onload = logo.onerror = null; done(); };
-          logo.src = dataUrl;
-        } else {
-          // Fallback text
-          logo.remove();
-          const ph = document.createElement('h2');
-          ph.textContent = 'INFOTEP';
-          ph.className = 'text-2xl font-bold text-brand-700';
-          document.querySelector('header .flex').appendChild(ph);
+    // Firma
+    const canvas = document.getElementById('pad');
+    sigPad = new SignaturePad(canvas, {
+       backgroundColor: 'rgba(255, 255, 255, 0)',
+       penColor: 'rgb(0, 0, 0)'
+    });
+
+    $('#btnLimpiar').onclick = () => sigPad.clear();
+    $('#btnEnviar').onclick = enviar;
+    $('#modalOk').onclick = hideModal;
+
+    // "Register Other" button logic
+    const btnOther = document.getElementById('btnRegisterOther');
+    if(btnOther) {
+       btnOther.onclick = function() {
+          $('#statusCard').classList.add('hidden');
+          $('#formCard').classList.remove('hidden');
+          $('#formCard').classList.add('animate-slide-up');
+       };
+    }
+
+    const btnResetPublic = document.getElementById('btnResetFormPublic');
+    if (btnResetPublic) btnResetPublic.onclick = resetFormularioPublico;
+
+    // 1) Cargar logo
+    const logo = document.getElementById('logoInfotep');
+    const logoReady = new Promise((resolve)=>{
+      let resolved = false;
+      function done(){ if (!resolved){ resolved = true; resolve(); } }
+
+      // Timeout safety for the logo promise specifically
+      setTimeout(done, 3000);
+
+      try {
+        google.script.run
+          .withSuccessHandler((dataUrl)=>{
+            if (dataUrl){
+              logo.onload = () => { logo.onload = logo.onerror = null; done(); };
+              logo.onerror = () => { logo.onload = logo.onerror = null; done(); };
+              logo.src = dataUrl;
+            } else {
+              // Fallback text
+              logo.remove();
+              const ph = document.createElement('h2');
+              ph.textContent = 'INFOTEP';
+              ph.className = 'text-2xl font-bold text-brand-700';
+              const header = document.querySelector('header .flex');
+              if(header) header.appendChild(ph);
+              done();
+            }
+          })
+          .withFailureHandler((e)=>{
+             console.warn('Logo fetch failed', e);
+             done();
+          })
+          .getLogoDataUrl(256);
+      } catch(e) {
+          console.error('google.script.run error', e);
           done();
-        }
-      })
-      .withFailureHandler(()=>{ done(); })
-      .getLogoDataUrl(256); // Higher res for retina
+      }
+    });
 
-    // Timeout safety
-    setTimeout(done, 5000);
-  });
+    // 2) Finish setup
+    logoReady.then(()=>{
+      const fl = esFechaLarga(window.__EVENT_FECHA__);
+      const fEl = document.getElementById('fechaLarga');
+      if(fEl) fEl.innerText = fl;
+      // Normal reset
+      Busy.reset();
+    });
 
-  // 2) Finish setup
-  logoReady.then(()=>{
-    const fl = esFechaLarga(window.__EVENT_FECHA__);
-    const fEl = document.getElementById('fechaLarga');
-    if(fEl) fEl.innerText = fl;
+    // Autocomplete
+    const cod = $('#codigo');
+    if(cod){
+      cod.addEventListener('change', lookupCodigo);
+      cod.addEventListener('blur', lookupCodigo);
+    }
+  } catch(e) {
+    console.error('Init crashed', e);
+    // ensure overlay is gone if crash
     Busy.reset();
-  });
-
-  // Autocomplete
-  const cod = $('#codigo');
-  if(cod){
-    cod.addEventListener('change', lookupCodigo);
-    cod.addEventListener('blur', lookupCodigo);
   }
 }
 
@@ -135,16 +156,12 @@ function resizeCanvas() {
   const canvas = document.getElementById('pad');
   if(!canvas) return;
   const ratio =  Math.max(window.devicePixelRatio || 1, 1);
-  // This part is tricky with SignaturePad if we want to keep content.
-  // Ideally clear or re-scale. For a simple form, clearing on resize is annoying but acceptable,
-  // or just set width once. Let's try to maintain width.
-  // Actually, SignaturePad docs recommend this:
-
   canvas.width = canvas.offsetWidth * ratio;
   canvas.height = canvas.offsetHeight * ratio;
-  canvas.getContext("2d").scale(ratio, ratio);
+  const ctx = canvas.getContext("2d");
+  if(ctx) ctx.scale(ratio, ratio);
 
-  if(sigPad) sigPad.clear(); // Clears content on resize to avoid distortion
+  if(sigPad) sigPad.clear(); // Clears content on resize
 }
 
 function lookupCodigo(){
@@ -188,11 +205,7 @@ function enviar(){
 
       if (res && res.ok){
         resetFormularioPublico();
-        // Hide form, show status or success message
-        // For simplicity, just modal + reload or clear
         showModal('¡Registro completado exitosamente!', 'Éxito');
-        // Optional: reload to show "Already Registered" screen if it was "me"
-        // But since we support multiple registrations (for others), maybe just stay clean.
       } else if (res && res.code==='DUPLICATE'){
         showModal('Esta persona ya se encuentra registrada para este evento.', 'Duplicado');
       } else {
