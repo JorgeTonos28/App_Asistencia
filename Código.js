@@ -779,8 +779,11 @@ function getRegisterUrl(eventId){
     base = String(base).replace(/\/(dev|user|exec)?(\?.*)?$/, '') + '/exec';
   }
 
-  // 2) authuser – se elimina para dejar que Google gestione la cuenta activa o
-  // use la URL de dominio (/a/dominio.com/...) si está disponible.
+  // 2) Sanitizar la URL para evitar conflictos con multi-login (/a/domain/)
+  // Si la URL contiene /a/dominio.com/, usuarios personales (gmail) obtendrán "No se puede abrir el archivo".
+  // Forzamos la estructura genérica: https://script.google.com/macros/s/.../exec
+  // Esto permite que el login de Google decida la cuenta adecuada o use la predeterminada sin forzar organización.
+  base = base.replace(/\/a\/[^\/]+\//, '/');
 
   // 3) agrega el token de registro
   const url = base + (base.indexOf('?') === -1 ? '?' : '&') + 'register=' + encodeURIComponent(ev.token);
