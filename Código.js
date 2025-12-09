@@ -4,7 +4,7 @@ const SH_EVT = SS.getSheetByName('Eventos');
 const SH_PAR = SS.getSheetByName('Participantes');
 const SH_ASI = SS.getSheetByName('Asistencias');
 const SH_LIS = SS.getSheetByName('Listas');
-const APP_VERSION = 'historial-v4-optimized-2025-10-14';
+const APP_VERSION = 'historial-v5-2025-10-14';
 
 function pingVersion(){
   return { ok:true, v: APP_VERSION };
@@ -773,6 +773,7 @@ function getRegisterUrl(eventId){
 
   // 1) Base pública si existe; si no, la del deployment actual
   let base = cfg_('PUBLIC_WEBAPP_URL') || ScriptApp.getService().getUrl();
+  const originalBase = base;
 
   // Asegura que es /exec real (algunos pegan /dev o sin /exec)
   if (!/\/exec(\?|$)/.test(base)) {
@@ -784,7 +785,10 @@ function getRegisterUrl(eventId){
   // Si la URL contiene /a/dominio.com/, usuarios personales (gmail) obtendrán "No se puede abrir el archivo".
   // Forzamos la estructura genérica: https://script.google.com/macros/s/.../exec
   // Esto permite que el login de Google decida la cuenta adecuada o use la predeterminada sin forzar organización.
-  base = base.replace(/\/a\/[^\/]+\//, '/');
+  // Reemplaza tanto "/a/example.com/" como "/a/example.com" (sin slash final si hubiera)
+  base = base.replace(/\/a\/[^\/]+(\/|$)/, '/');
+
+  console.log('[getRegisterUrl] Original:', originalBase, 'Cleaned:', base);
 
   // 3) agrega el token de registro
   const url = base + (base.indexOf('?') === -1 ? '?' : '&') + 'register=' + encodeURIComponent(ev.token);
