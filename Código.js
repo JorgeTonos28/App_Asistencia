@@ -696,15 +696,7 @@ function getRegisterUrl(eventId){
     base = String(base).replace(/\/(dev|user|exec)?(\?.*)?$/, '') + '/exec';
   }
 
-  // 2) authuser – evita el “choque de cuentas” en navegadores con varias sesiones
-  // Toma la cuenta #0 si no estaba especificado (se puede ajustar a 1 si tu cuenta
-  // primaria suele ser la del dominio y la #0 la personal).
-  const hasAuthuser = /[?&]authuser=/.test(base);
-  if (!hasAuthuser) {
-    base += (base.indexOf('?') === -1 ? '?' : '&') + 'authuser=1';
-  }
-
-  // 3) agrega el token de registro
+  // 2) agrega el token de registro
   const url = base + (base.indexOf('?') === -1 ? '?' : '&') + 'register=' + encodeURIComponent(ev.token);
 
   return url;
