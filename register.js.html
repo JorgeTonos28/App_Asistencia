@@ -64,7 +64,19 @@ function init(){
           done();
         }
       })
-      .withFailureHandler(()=>{ done(); }) // si falla, seguimos y quitamos overlay
+      .withFailureHandler(()=>{
+        // Fallback: placeholder de texto if getLogoDataUrl completely fails
+        logo.remove();
+        if (!document.querySelector('header.card > div')) {
+          const ph = document.createElement('div');
+          ph.textContent = 'INFOTEP';
+          ph.style.fontWeight = '700';
+          ph.style.fontSize = '18px';
+          ph.style.marginBottom = '6px';
+          document.querySelector('header.card').prepend(ph);
+        }
+        done();
+      }) // si falla, seguimos y quitamos overlay
       .getLogoDataUrl(128);
 
     // Failsafe si algo se queda colgado (p. ej. red muy lenta)

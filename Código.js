@@ -4,7 +4,7 @@ const SH_EVT = SS.getSheetByName('Eventos');
 const SH_PAR = SS.getSheetByName('Participantes');
 const SH_ASI = SS.getSheetByName('Asistencias');
 const SH_LIS = SS.getSheetByName('Listas');
-const APP_VERSION = 'historial-v3-2025-10-13';
+const APP_VERSION = 'historial-v3-2025-10-14';
 
 function pingVersion(){
   return { ok:true, v: APP_VERSION };
@@ -686,6 +686,9 @@ function getRegisterUrl(eventId){
 
   // 1) Base pública si existe; si no, la del deployment actual
   let base = cfg_('PUBLIC_WEBAPP_URL') || ScriptApp.getService().getUrl();
+
+  // Strip out /a/<domain>/ to support users with multiple accounts
+  base = base.replace(/\/a\/[^/]+\//, '/');
 
   // Asegura que es /exec real (algunos pegan /dev o sin /exec)
   if (!/\/exec(\?|$)/.test(base)) {
