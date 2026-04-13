@@ -688,7 +688,7 @@ function getRegisterUrl(eventId){
   let base = cfg_('PUBLIC_WEBAPP_URL') || ScriptApp.getService().getUrl();
 
   // Strip out /a/<domain>/ to support users with multiple accounts
-  base = base.replace(/\/a\/[^/]+\//, '/');
+  base = base.replace(/\/a\/macros\/[^/]+\//, '/macros/').replace(/\/a\/[^/]+\//, '/');
 
   // Asegura que es /exec real (algunos pegan /dev o sin /exec)
   if (!/\/exec(\?|$)/.test(base)) {
