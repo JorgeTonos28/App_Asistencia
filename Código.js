@@ -63,7 +63,6 @@ function doGet(e) {
     // 👇 Se añade meta viewport aquí para forzar responsive en móviles
     return t.evaluate()
       .setTitle('Registro de Asistencia')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
       .addMetaTag('apple-mobile-web-app-capable', 'yes')
       .addMetaTag('mobile-web-app-capable', 'yes');
@@ -75,7 +74,6 @@ function doGet(e) {
     
     return t.evaluate()
       .setTitle('Asistencias – Admin')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
       .addMetaTag('apple-mobile-web-app-capable', 'yes')
       .addMetaTag('mobile-web-app-capable', 'yes');
@@ -567,7 +565,7 @@ function getDriveThumbnailBlob_(fileId, size){
 function getLogoDataUrl(size){
   const S = Math.max(48, Number(size)||128);
   const cache = CacheService.getScriptCache();
-  const key = 'LOGO_DATA_URL_'+S;
+  const key = 'LOGO_DATA_URL_V3_'+S;
   const cached = cache.get(key);
   if (cached) return cached;
 
