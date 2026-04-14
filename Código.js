@@ -4,7 +4,7 @@ const SH_EVT = SS.getSheetByName('Eventos');
 const SH_PAR = SS.getSheetByName('Participantes');
 const SH_ASI = SS.getSheetByName('Asistencias');
 const SH_LIS = SS.getSheetByName('Listas');
-const APP_VERSION = 'historial-v3-2025-10-13';
+const APP_VERSION = 'historial-v3-2025-10-14';
 
 function pingVersion(){
   return { ok:true, v: APP_VERSION };
@@ -567,7 +567,7 @@ function getDriveThumbnailBlob_(fileId, size){
 function getLogoDataUrl(size){
   const S = Math.max(48, Number(size)||128);
   const cache = CacheService.getScriptCache();
-  const key = 'LOGO_DATA_URL_'+S;
+  const key = 'LOGO_DATA_URL_V3_'+S;
   const cached = cache.get(key);
   if (cached) return cached;
 
@@ -687,21 +687,16 @@ function getRegisterUrl(eventId){
   // 1) Base pública si existe; si no, la del deployment actual
   let base = cfg_('PUBLIC_WEBAPP_URL') || ScriptApp.getService().getUrl();
 
+  // Strip out /a/<domain>/ to support users with multiple accounts
+  base = base.replace(/\/a\/macros\/[^/]+\//, '/macros/').replace(/\/a\/[^/]+\//, '/');
+
   // Asegura que es /exec real (algunos pegan /dev o sin /exec)
   if (!/\/exec(\?|$)/.test(base)) {
     // normaliza: quita query y fuerza /exec
     base = String(base).replace(/\/(dev|user|exec)?(\?.*)?$/, '') + '/exec';
   }
 
-  // 2) authuser – evita el “choque de cuentas” en navegadores con varias sesiones
-  // Toma la cuenta #0 si no estaba especificado (se puede ajustar a 1 si tu cuenta
-  // primaria suele ser la del dominio y la #0 la personal).
-  const hasAuthuser = /[?&]authuser=/.test(base);
-  if (!hasAuthuser) {
-    base += (base.indexOf('?') === -1 ? '?' : '&') + 'authuser=1';
-  }
-
-  // 3) agrega el token de registro
+  // 2) agrega el token de registro
   const url = base + (base.indexOf('?') === -1 ? '?' : '&') + 'register=' + encodeURIComponent(ev.token);
 
   return url;

@@ -4,20 +4,6 @@
   <title>Registro de Asistencia</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   
-  <!-- Script anti-wrapper (responsive fix) -->
-  <script>
-  (function(){
-    try{
-      // Si estamos embebidos (iframe del editor de Google) y la pantalla es pequeña → salir al top
-      var isFramed = (window.top !== window.self);
-      var isSmall = Math.max(screen.width, screen.height) <= 880;
-      if (isFramed && isSmall) {
-        window.top.location.href = window.location.href;
-      }
-    }catch(e){}
-  })();
-  </script>
-  
   <?!= include_('css'); ?>
 </head>
 <body class="container">
