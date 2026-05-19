@@ -7,69 +7,29 @@ let _eventoRecienCreadoId = null;
 const $ = s => document.querySelector(s);
 
 // === Formato UI: "dd/MM/yyyy - hh:mm:ss a.m./p.m."  ===
-// Acepta: ISO (con Z), "yyyy-MM-dd HH:mm:ss", "dd/MM/yyyy HH:mm:ss" o Date.
 function fmtFechaUI(v){
   const s = String(v || '').trim();
   let d = null;
-
-  // Caso 1: ISO "2025-10-17T14:12:24.000Z" (o sin .000)
   if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(s)) {
     const tmp = new Date(s);
-    if (!isNaN(tmp)) d = tmp; // se interpreta en local automáticamente
+    if (!isNaN(tmp)) d = tmp;
   }
-
-  // Caso 2: "yyyy-MM-dd HH:mm:ss" -> construimos Date local
   if (!d) {
     let m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/);
     if (m) d = new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]);
   }
-
-  // Caso 3: "dd/MM/yyyy HH:mm:ss" -> construimos Date local
   if (!d) {
     let m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})[ T](\d{2}):(\d{2}):(\d{2})$/);
     if (m) d = new Date(+m[3], +m[2]-1, +m[1], +m[4], +m[5], +m[6]);
   }
-
-  // Caso 4: ya es Date
   if (!d && v instanceof Date && !isNaN(v.valueOf())) d = v;
-
   if (d) {
-    // Usa tus helpers existentes: dd() y fmtHora12()
     return `${dd(d.getDate())}/${dd(d.getMonth()+1)}/${d.getFullYear()} - ${fmtHora12(d)}`;
   }
-  // Fallback: muestra lo que venga
   return s;
 }
 
-// === FORMATEO “texto → texto” sin tocar zona ni AM/PM ===
-function fmtFechaHoraDMYHMS_text(v){
-  const s = String(v || '').trim();
-  if (!s) return '';
-
-  // Caso A: guardado como "yyyy-MM-dd HH:mm:ss"  ->  "dd/MM/yyyy HH:mm:ss"
-  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/);
-  if (m){
-    const [_, Y, Mo, D, H, Mi, S] = m;
-    return `${D}/${Mo}/${Y} ${H}:${Mi}:${S}`;
-  }
-
-  // Caso B: ya viene como "dd/MM/yyyy HH:mm:ss" -> devuélvelo tal cual
-  m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})[ T](\d{2}):(\d{2}):(\d{2})$/);
-  if (m){
-    return s;
-  }
-
-  // Caso C: Date real -> pásalo a DMY HH:mm:ss local sin AM/PM
-  if (v instanceof Date && !isNaN(v.valueOf())){
-    const d = v;
-    return `${dd(d.getDate())}/${dd(d.getMonth()+1)}/${d.getFullYear()} ${dd(d.getHours())}:${dd(d.getMinutes())}:${dd(d.getSeconds())}`;
-  }
-
-  // Fallback: deja lo que venga (mejor mostrar que ocultar)
-  return s;
-}
-
-// ======= FECHAS – utilidades robustas (local, sin desfases) =======
+// ======= FECHAS – utilidades robustas =======
 const dd = n => String(n).padStart(2,'0');
 
 function parseYMDLocal(str){
@@ -81,53 +41,29 @@ function toLocalDate(v){
   if (v instanceof Date) return v;
   const s = String(v||'').trim();
   if (!s) return null;
-
-  // "yyyy-MM-dd HH:mm:ss"
   let m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
   if (m) return new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]);
-
-  // "yyyy-MM-dd"
   const dYMD = parseYMDLocal(s);
   if (dYMD) return dYMD;
-
-  // ISO (con Z)
   const dISO = new Date(s);
   return isNaN(dISO) ? null : dISO;
-}
-function fmtDateYmd(v){
-  const d = toLocalDate(v);
-  if (!d) return (v||'').toString().slice(0,10);
-  return `${d.getFullYear()}-${dd(d.getMonth()+1)}-${dd(d.getDate())}`;
 }
 function esFechaCortaDMY(v){
   const d = toLocalDate(v);
   if (!d) return '';
   return `${dd(d.getDate())}/${dd(d.getMonth()+1)}/${d.getFullYear()}`;
 }
-function esFechaLarga(v){ // para encabezados tipo "Viernes 17 de Octubre del 2025"
-  const d = toLocalDate(v);
-  if (!d) return '';
-  const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
-  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
-  return `${cap(dias[d.getDay()])} ${dd(d.getDate())} de ${cap(meses[d.getMonth()])} del ${d.getFullYear()}`;
-}
 function fmtHora12(d){
   let h = d.getHours(), ampm = (h>=12?'p.m.':'a.m.');
   h = h%12; if (h===0) h = 12;
-  return `${dd(h)}:${dd(d.getMinutes())}:${dd(d.getSeconds())} ${ampm}`;
+  return `${dd(h)}:${dd(d.getMinutes())} ${ampm}`;
 }
-function fmtFechaHoraDMYHMSpm(v){ // "13/10/2025 - 02:33:18 p.m."
+function fmtHistorialTitulo(v){
   const d = toLocalDate(v);
   if (!d) return v||'';
-  return `${esFechaCortaDMY(d)} - ${fmtHora12(d)}`;
-}
-function fmtHistorialTitulo(v){ // "Jueves 14 de Octubre 01:17:46 p.m."
-  const d = toLocalDate(v);
-  if (!d) return v||'';
-  const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
-  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  return `${dias[d.getDay()]} ${dd(d.getDate())} de ${meses[d.getMonth()]} ${fmtHora12(d)}`;
+  const dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  return `${dias[d.getDay()]} ${dd(d.getDate())} ${meses[d.getMonth()]} ${fmtHora12(d)}`;
 }
 
 function resetFormularioAdmin(){
@@ -135,10 +71,10 @@ function resetFormularioAdmin(){
   document.getElementById('pNombre').value = '';
   document.getElementById('pCorreo').value = '';
   document.getElementById('pTel').value = '';
-  if (sigPad && typeof sigPad.clear === 'function') sigPad.clear();
+  if (sigPad) sigPad.clear();
 }
 
-// Gestor de carga con contador: evita que el overlay se oculte antes de tiempo
+// Gestor de carga con contador + Tailwind
 const Busy = (() => {
   let pending = 0;
   const el = () => $('#overlay');
@@ -147,16 +83,16 @@ const Busy = (() => {
     const m = o.querySelector('.overlay-msg');
     if (m) m.textContent = msg || 'Procesando…';
     pending++;
-    o.hidden = false;
+    o.classList.remove('hidden');
   }
   function hide(){
     const o = el(); if (!o) return;
     pending = Math.max(0, pending - 1);
-    if (pending === 0) o.hidden = true;
+    if (pending === 0) o.classList.add('hidden');
   }
   function reset(){
     const o = el(); if (!o) return;
-    pending = 0; o.hidden = true;
+    pending = 0; o.classList.add('hidden');
   }
   function get(){ return pending; }
   return { show, hide, reset, get };
@@ -167,43 +103,51 @@ function hideBusy(){ Busy.hide(); }
 
 /* ======================= Init ======================= */
 function init(){
-  Busy.reset(); // aseguramos overlay apagado al arrancar
-
+  Busy.reset();
   showBusy('Cargando panel…');
 
-  google.script.run
-    .withSuccessHandler(res => console.log('[pingVersion]', res))
-    .withFailureHandler(err => console.error('[pingVersion] FALLÓ', err))
-    .pingVersion();
+  // Failsafe: force remove overlay after 4 seconds regardless of errors
+  setTimeout(() => {
+     Busy.reset();
+  }, 4000);
 
-  selEvento = document.getElementById('selEvento');
-  const canvas = document.getElementById('pad');
-  sigPad = new SignaturePad(canvas);
+  try {
+    // Resize canvas
+    const canvas = document.getElementById('pad');
+    sigPad = new SignaturePad(canvas, {
+       backgroundColor: 'rgba(255, 255, 255, 0)',
+       penColor: 'rgb(0, 0, 0)'
+    });
 
-  const btnResetAdmin = document.getElementById('btnResetFormAdmin');
-  if (btnResetAdmin) btnResetAdmin.onclick = resetFormularioAdmin;
+    selEvento = document.getElementById('selEvento');
 
-  document.getElementById('btnLimpiar').onclick = ()=>sigPad.clear();
-  document.getElementById('btnFirmar').onclick = registrarAdmin;
-  document.getElementById('btnCrear').onclick = crearEvento;
-  document.getElementById('btnGenerarLista').onclick = generarLista;
-  document.getElementById('btnGenerarLink').onclick = generarLink;
+    const btnResetAdmin = document.getElementById('btnResetFormAdmin');
+    if (btnResetAdmin) btnResetAdmin.onclick = resetFormularioAdmin;
 
-  // Autocompletar por Código en admin
-  const cod = document.getElementById('pCodigo');
-  cod.addEventListener('change', lookupCodigoAdmin);
-  cod.addEventListener('blur', lookupCodigoAdmin);
+    document.getElementById('btnLimpiar').onclick = ()=>sigPad.clear();
+    document.getElementById('btnFirmar').onclick = registrarAdmin;
+    document.getElementById('btnCrear').onclick = crearEvento;
+    document.getElementById('btnGenerarLista').onclick = generarLista;
+    document.getElementById('btnGenerarLink').onclick = generarLink;
 
-  cargarEventos();                 // carga inicial (sin overlay)
-  cargarHistorialCerrados();
-  
-    // OCULTAR tras 8s máx. (failsafe)
-  setTimeout(()=>{
-    if (Busy.get()===0) Busy.reset();
-    else Busy.reset(); // si prefieres forzarlo sí o sí a los 8s
-  }, 5000);
+    const cod = document.getElementById('pCodigo');
+    cod.addEventListener('change', lookupCodigoAdmin);
+    cod.addEventListener('blur', lookupCodigoAdmin);
 
-  setInterval(()=>refrescarListas(), 7000); // polling ligero
+    // Cargar Logo
+    google.script.run.withSuccessHandler(url => {
+       if(url) $('#logoInfotep').src = url;
+       else $('#logoInfotep').remove();
+    }).getLogoDataUrl(128);
+
+    cargarEventos();
+    cargarHistorialCerrados();
+
+    setInterval(()=>refrescarListas(), 10000);
+  } catch(e) {
+    console.error('Init crashed', e);
+    Busy.reset();
+  }
 }
 
 function lookupCodigoAdmin(){
@@ -219,7 +163,7 @@ function lookupCodigoAdmin(){
         document.getElementById('pTel').value    = res.participante.telefono || '';
       }
     })
-    .withFailureHandler((err)=>{ hideBusy(); console.error('[findParticipanteByCodigo] FALLÓ', err); })
+    .withFailureHandler((err)=>{ hideBusy(); console.error(err); })
     .findParticipanteByCodigo(codigo);
 }
 
@@ -228,121 +172,108 @@ function cargarEventos(){
   const last = localStorage.getItem('lastEventId') || '';
 
   google.script.run
-    .withSuccessHandler(res => console.log('[ping]', res))
-    .withFailureHandler(err => console.error('[ping] FALLÓ', err))
-    .ping();
-
-  google.script.run
     .withSuccessHandler((raw)=>{
-      // V2 devuelve JSON string {ok,data}
       let res = raw;
       try{ if (typeof raw==='string') res = JSON.parse(raw); }catch(e){}
       const data = (res && res.ok) ? res.data : [];
       renderEventos(Array.isArray(data)?data:[]);
       const s = document.getElementById('selEvento');
+
       if (last && s.querySelector(`option[value="${last}"]`)) {
         s.value = last;
-        s.dispatchEvent(new Event('change'));
-      } else if (s.options.length){
-        s.selectedIndex = 0;
-        s.dispatchEvent(new Event('change'));
+      } else if (s.options.length > 1){ // >1 porque el 0 es "cargando" o "vacio"
+        // remove "cargando" placeholder
+        if(s.options[0].value === "") s.removeChild(s.options[0]);
+        if(s.options.length > 0) s.selectedIndex = 0;
       }
+      // trigger update
+      if(s.value) s.dispatchEvent(new Event('change'));
     })
     .withFailureHandler((err)=>{
-      console.error('[apiListEventosActivosV2] FALLÓ:', err);
+      console.error(err);
       renderEventos([]);
     })
-    .apiListEventosActivosV2();   // <<—— SOLO ACTIVOS
+    .apiListEventosActivosV2();
 }
 
 function renderEventos(data){
-  console.log('[renderEventos] recibidos', data);
   const s = document.getElementById('selEvento');
-  if (!s) { console.error('No existe #selEvento en el DOM'); return; }
+  if (!s) return;
 
   if (!Array.isArray(data) || data.length === 0){
-    s.innerHTML = '';
-    document.getElementById('lista').innerHTML = '<p>No hay eventos abiertos.</p>';
-    // por si acaso, apaga overlay si nadie lo está usando
+    s.innerHTML = '<option value="">(Sin eventos activos)</option>';
+    document.getElementById('lista').innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-slate-400">No hay eventos activos.</td></tr>';
+    $('#contadorPart').textContent = '0';
     if (Busy.get()===0) Busy.reset();
     return;
   }
 
   const options = data.map(d=>{
     const cerrado = String(d.estado||'').toUpperCase()==='CERRADO';
-    const label = `${d.nombre} (${esFechaCortaDMY(d.fecha)})${cerrado?' [CERRADO]':''}`;
+    const label = `${d.nombre}`;
     return `<option value="${d.id}" data-token="${d.token||''}" data-fecha="${d.fecha||''}">${label}</option>`;
   }).join('');
 
   s.innerHTML = options;
 
-  // Selección por defecto (o enfocar recién creado si lo guardaste)
   if (_eventoRecienCreadoId && data.some(x=>x.id===_eventoRecienCreadoId)){
     s.value = _eventoRecienCreadoId;
     _eventoRecienCreadoId = null;
-  } else if (!s.value && data[0]) {
-    s.value = data[0].id;
-  }
-
-  const opt = s.selectedOptions[0];
-  if (opt){
-    currentToken = opt.dataset.token || null;
-    const fTxt = document.getElementById('fechaEventoTxt');
-    if (fTxt) fTxt.textContent = esFechaCortaDMY(opt.dataset.fecha || '');
   }
 
   s.onchange = ()=>{
     const o = s.selectedOptions[0];
-    currentToken = o?.dataset?.token || null;
+    if(!o) return;
+    currentToken = o.dataset.token || null;
     const fTxt = document.getElementById('fechaEventoTxt');
-    if (fTxt) fTxt.textContent = esFechaCortaDMY(o?.dataset?.fecha || '');
+    if (fTxt) fTxt.textContent = esFechaCortaDMY(o.dataset.fecha || '');
     localStorage.setItem('lastEventId', s.value);
     refrescarListas();
   };
 
-  refrescarListas();
-  // seguro extra: si nadie pidió overlay, apágalo
+  // Clean busy
   if (Busy.get()===0) Busy.reset();
 }
 
-/* ======================= Listas (polling sin overlay) ======================= */
+/* ======================= Listas ======================= */
 function refrescarListas(){
   const evId = selEvento?.value;
-  if (!evId) { Busy.reset(); return; }
+  if (!evId) return;
 
-  // Sólo refrescamos ASISTENCIAS del evento visible
   google.script.run
     .withSuccessHandler((raw)=>{
       let res = raw; try{ if (typeof raw==='string') res = JSON.parse(raw); }catch{}
       if (res && res.ok) {
         renderAsistencias(res.data);
-      } else {
-        console.error('[apiListAsistenciasV1] ERROR', res && res.error);
       }
     })
-    .withFailureHandler(err=>console.error('[apiListAsistenciasV1] FALLÓ', err))
+    .withFailureHandler(err=>console.error(err))
     .apiListAsistenciasV1(evId);
-
-  // El historial YA NO depende del evento; no lo pedimos aquí.
 }
 
 function renderAsistencias(rows){
-  const html = `
-  <table>
-    <thead><tr><th>Código</th><th>Nombre</th><th>Correo</th><th>Teléfono</th><th>Firma</th><th>Vía</th><th>Fecha</th></tr></thead>
-    <tbody>
-      ${(rows||[]).map(r=>`<tr>
-        <td>${r.codigo||''}</td>
-        <td>${r.nombre||''}</td>
-        <td>${r.correo||''}</td>
-        <td>${r.telefono||''}</td>
-        <td>${r.firma_url?'<span class="ok">✔ Firmado</span>':''}</td>
-        <td>${r.via||''}</td>
-        <td>${fmtFechaUI(r.registrado_en)}</td>
-      </tr>`).join('')}
-    </tbody>
-  </table>`;
-  document.getElementById('lista').innerHTML = html;
+  const tbody = document.getElementById('lista');
+  const count = document.getElementById('contadorPart');
+
+  if(!rows || rows.length === 0){
+     tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-slate-400">Sin participantes registrados aún.</td></tr>';
+     count.textContent = '0';
+     return;
+  }
+
+  count.textContent = rows.length;
+
+  const html = rows.map(r=>`
+    <tr class="hover:bg-slate-50 transition-colors">
+        <td class="px-6 py-4 font-medium text-slate-900">${r.codigo||'--'}</td>
+        <td class="px-6 py-4">${r.nombre||''}</td>
+        <td class="px-6 py-4 text-slate-500 truncate max-w-xs" title="${r.correo||''}">${r.correo||''}</td>
+        <td class="px-6 py-4 text-center">
+             ${r.firma_url ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><i class="fa-solid fa-check mr-1"></i> OK</span>' : '<span class="text-slate-300">-</span>'}
+        </td>
+    </tr>`).join('');
+
+  tbody.innerHTML = html;
 }
 
 function renderHistorial(rows){
@@ -351,118 +282,54 @@ function renderHistorial(rows){
 
   const data = Array.isArray(rows) ? rows.slice() : [];
   if (!data.length){
-    el.innerHTML = '<p>No hay listas cerradas.</p>';
+    el.innerHTML = '<p class="text-sm text-slate-400 italic">No hay historial disponible.</p>';
     return;
   }
 
-  // Ordenar asegurado (desc por generado_en)
+  // Ordenar desc
   data.sort((a,b)=> String(b.generado_en).localeCompare(String(a.generado_en)));
 
-  // Agrupa por event_id y luego por generado_en
-  const grouped = {};
-  for (const r of data){
-    const k = r.event_id;
-    if (!grouped[k]) grouped[k] = { meta: r, byTs: {} };
-    const ts = String(r.generado_en||'');
-    (grouped[k].byTs[ts] = grouped[k].byTs[ts] || []).push(r);
-  }
+  const html = data.map(i => {
+    const labelTipo = (String(i.archivo_tipo).toUpperCase()==='XLSX') ?
+        '<i class="fa-solid fa-file-excel text-green-600"></i>' :
+        '<i class="fa-solid fa-file-pdf text-red-600"></i>';
 
-  const html = Object.values(grouped).map(g => {
-    const m = g.meta;
-    const titulo = `${m.evento_nombre} (${esFechaCortaDMY(m.evento_fecha)}) [CERRADO]`;
-
-    const blocks = Object.entries(g.byTs).sort((a,b)=> b[0].localeCompare(a[0])).map(([ts, arr])=>{
-      // Usa Set para evitar duplicar enlaces si vinieron filas repetidas
-      const links = [];
-      const seen = new Set();
-      for (const i of arr){
-        const label = (String(i.archivo_tipo).toUpperCase()==='XLSX') ? 'Excel' : 'PDF';
-        const key = label + '|' + i.archivo_url;
-        if (i.archivo_url && !seen.has(key)){ links.push(`<a target="_blank" href="${i.archivo_url}">${label}</a>`); seen.add(key); }
-      }
-      const total = arr[0]?.total || 0;
-      return `<li>${fmtHistorialTitulo(ts)} · ${links.join(' · ')} · ${total} asistentes</li>`;
-    }).join('');
-
-    return `<div class="card"><h3 style="margin:0 0 8px">${titulo}</h3><ul>${blocks}</ul></div>`;
+    return `
+    <div class="bg-slate-50 p-3 rounded-lg border border-slate-100 hover:border-brand-200 transition-colors">
+       <div class="flex justify-between items-start mb-1">
+          <h4 class="text-sm font-bold text-slate-700 truncate w-3/4" title="${i.evento_nombre}">${i.evento_nombre}</h4>
+          <span class="text-xs text-slate-400 font-mono">${fmtHistorialTitulo(i.generado_en).split(' ').slice(-2).join(' ')}</span>
+       </div>
+       <div class="flex justify-between items-center text-xs mt-2">
+          <span class="text-slate-500">${i.total} asistentes</span>
+          <a href="${i.archivo_url}" target="_blank" class="flex items-center gap-1 text-slate-600 hover:text-brand-600 font-medium">
+             ${labelTipo} Abrir
+          </a>
+       </div>
+    </div>
+    `;
   }).join('');
 
   el.innerHTML = html;
 }
 
-function prependHistorialItem(i){
-  const el = document.getElementById('historial');
-  if (!el) return;
-
-  // si aún no hay nada dibujado, fuerza un fetch en vez de inventar estructura
-  if (!el.innerHTML || /No hay listas cerradas|No se pudo cargar/.test(el.innerHTML)) {
-    cargarHistorialCerrados();
-    return;
-  }
-
-  // Busca si ya existe el bloque del evento
-  const titulo = `${i.evento_nombre} (${esFechaCortaDMY(i.evento_fecha)}) [CERRADO]`;
-  let blocks = el.querySelectorAll('.card');
-  let found = null;
-  blocks.forEach(b=>{
-    const h3 = b.querySelector('h3');
-    if (h3 && h3.textContent.trim() === titulo) found = b;
-  });
-
-  const li = document.createElement('li');
-  li.innerHTML = `${fmtHistorialTitulo(i.generado_en)} · ${i.archivo_tipo} · <a target="_blank" href="${i.archivo_url}">Abrir ${i.archivo_tipo}</a> · ${i.total} asistentes`;
-
-  if (found){
-    const ul = found.querySelector('ul');
-    if (ul) ul.prepend(li);
-    else found.insertAdjacentHTML('beforeend', `<ul>${li.outerHTML}</ul>`);
-    return;
-  }
-
-  // si no existe el bloque, lo creamos arriba del todo
-  const htmlBlock =
-    `<div class="card">
-       <h3 style="margin:0 0 8px">${titulo}</h3>
-       <ul>${li.outerHTML}</ul>
-     </div>`;
-  el.insertAdjacentHTML('afterbegin', htmlBlock);
-}
-
 function cargarHistorialCerrados(){
   google.script.run
     .withSuccessHandler((raw)=>{
-      // Asegura parseo y fallback
       let res = raw;
       try{ if (typeof raw === 'string') res = JSON.parse(raw); }catch(e){}
       if (res && res.ok && Array.isArray(res.data)){
-        console.log('[getHistorialDesdeListasJSON] items:', res.data.length);
         renderHistorial(res.data);
-        return;
+      } else {
+        google.script.run
+          .withSuccessHandler((rows)=>renderHistorial(Array.isArray(rows)?rows:[]))
+          .getHistorialDesdeListas();
       }
-
-      // Si la versión JSON no está o vino algo raro, intenta la función nativa
-      console.warn('[getHistorialDesdeListasJSON] fallback to native', res && (res.error||res));
-      google.script.run
-        .withSuccessHandler((rows)=>{
-          console.log('[getHistorialDesdeListas] items:', Array.isArray(rows)?rows.length:rows);
-          renderHistorial(Array.isArray(rows)?rows:[]);
-        })
-        .withFailureHandler(err=>{
-          console.error('[getHistorialDesdeListas] FALLÓ', err);
-          const el = document.getElementById('historial');
-          if (el) el.innerHTML = '<p>No se pudo cargar el historial.</p>';
-        })
-        .getHistorialDesdeListas();
-    })
-    .withFailureHandler(err=>{
-      console.error('[getHistorialDesdeListasJSON] FALLÓ', err);
-      const el = document.getElementById('historial');
-      if (el) el.innerHTML = '<p>No se pudo cargar el historial.</p>';
     })
     .getHistorialDesdeListasJSON();
 }
 
-/* ======================= Acciones con overlay ======================= */
+/* ======================= Acciones ======================= */
 function registrarAdmin(){
   const evId = selEvento.value;
   const codigo = document.getElementById('pCodigo').value.trim();
@@ -471,7 +338,7 @@ function registrarAdmin(){
   const tel = document.getElementById('pTel').value.trim();
 
   if (!evId || !codigo || !nombre || !correo || sigPad.isEmpty()) {
-    alert('Completa código, nombre, correo y firma.');
+    alert('Completa todos los campos obligatorios y firma.');
     return;
   }
 
@@ -483,13 +350,10 @@ function registrarAdmin(){
       hideBusy();
       if (typeof res === 'string'){ try{ res = JSON.parse(res); }catch{} }
       if (res && res.ok){
-        sigPad.clear();
-        document.getElementById('pCodigo').value='';
-        document.getElementById('pNombre').value='';
-        document.getElementById('pCorreo').value='';
-        document.getElementById('pTel').value='';
+        resetFormularioAdmin();
         refrescarListas();
-        alert('Asistencia registrada.');
+        // Toast or simple alert
+        // alert('Asistencia registrada.');
       } else if (res && res.code==='DUPLICATE'){
         alert('Este participante ya está registrado en este evento.');
       } else {
@@ -498,8 +362,8 @@ function registrarAdmin(){
     })
     .withFailureHandler((err)=>{
       hideBusy();
-      console.error('[registrarAsistencia] FALLÓ', err);
-      alert('Error al registrar asistencia. Revisa la consola.');
+      console.error(err);
+      alert('Error al registrar asistencia.');
     })
     .registrarAsistencia({event_id: evId, codigo, nombre, correo, telefono: tel, firma_b64, via:'admin'});
 }
@@ -520,84 +384,51 @@ function crearEvento(){
         document.getElementById('evNombre').value='';
         document.getElementById('evFecha').value='';
         document.getElementById('evMax').value='';
-
-        // inyectar nueva opción al select
-        const s = document.getElementById('selEvento');
-        if (s){
-          const opt = document.createElement('option');
-          opt.value = r.evento.id;
-          opt.textContent = `${r.evento.nombre} (${r.evento.fecha || ''})`;
-          opt.dataset.token = r.evento.token || '';
-          opt.dataset.fecha = r.evento.fecha || '';
-          s.appendChild(opt);
-          s.value = r.evento.id;
-          s.dispatchEvent(new Event('change'));
-        }
-        alert('Evento creado.');
+        _eventoRecienCreadoId = r.evento.id;
+        cargarEventos();
+        alert('Evento creado exitosamente.');
       } else {
-        console.error('[crearEvento] respuesta inesperada', r);
         alert('No se pudo crear el evento.');
       }
     })
     .withFailureHandler((err)=>{
       hideBusy();
-      console.error('[crearEvento] FALLÓ:', err);
-      alert('Error al crear evento. Mira la consola.');
+      alert('Error al crear evento.');
     })
     .createEvento({nombre, fecha, max});
 }
 
 function generarLista(){
   const evId = selEvento && selEvento.value;
-  if (!evId){
-    alert('Selecciona un evento.');
-    return;
-  }
+  if (!evId) return;
+
+  if(!confirm('¿Estás seguro de cerrar el evento y generar el reporte final? Esta acción no se puede deshacer.')) return;
 
   showBusy('Generando PDF y cerrando asistencia…');
 
   google.script.run
     .withSuccessHandler((res)=>{
       hideBusy();
-
-      // Normaliza: si viene string => parse; si viene undefined => objeto vacío
       try { if (typeof res === 'string') res = JSON.parse(res); } catch(e){}
       if (!res) res = {};
 
-      // Si ok !== true, intenta no “mentir”: si vino pdfUrl, trátalo como éxito parcial
-      const ok = (res.ok === true) || (!!res.pdfUrl && typeof res.pdfUrl === 'string');
+      const ok = (res.ok === true) || (!!res.pdfUrl);
 
       if (!ok){
-        console.error('[generarLista] respuesta:', res);
         alert('No se pudo generar la lista: ' + (res.msg || res.error || 'desconocido'));
         return;
       }
 
-      alert('Lista generada y evento cerrado.');
+      alert('Lista generada correctamente.');
       if (res.pdfUrl) { try { window.open(res.pdfUrl, '_blank'); } catch(e) {} }
 
-      // 1) Pintado optimista si backend envió el registro
-      if (res.lista) {
-        try { prependHistorialItem(res.lista); } catch(e){ console.warn('prependHistorialItem err:', e); }
-      }
-
-      // 2) Refresco 100% consistente desde hoja (ya sin filtro)
-      setTimeout(()=>{ cargarHistorialCerrados(); }, 300);
-
-      // 3) Refresca eventos del select (el cerrado ya no aparecerá)
-      if (typeof cargarEventos === 'function') cargarEventos();
-      const s = document.getElementById('selEvento');
-      if (s) {
-        s.value = '';
-        const fTxt = document.getElementById('fechaEventoTxt');
-        if (fTxt) fTxt.textContent = '—';
-      }
+      setTimeout(()=>{ cargarHistorialCerrados(); }, 500);
+      cargarEventos(); // Refresh active events list (closed event should disappear)
     })
-
     .withFailureHandler((err)=>{
       hideBusy();
-      console.error('[generarLista] FALLÓ', err);
-      alert('Error al generar lista. Mira la consola.');
+      console.error(err);
+      alert('Error al generar lista.');
     })
     .generarLista(evId);
 }
@@ -609,40 +440,19 @@ function generarLink(){
   google.script.run
     .withSuccessHandler((url)=>{
       hideBusy();
-      prompt('Copia el link de registro:', url);
+      // Use clipboard API if available, else prompt
+      if(navigator.clipboard){
+         navigator.clipboard.writeText(url).then(()=>alert('Enlace copiado al portapapeles!')).catch(()=>prompt('Copia el link:', url));
+      } else {
+         prompt('Copia el link de registro:', url);
+      }
     })
     .withFailureHandler((err)=>{
       hideBusy();
-      console.error('[getRegisterUrl] FALLÓ', err);
       alert('Error al generar link.');
     })
     .getRegisterUrl(evId);
 }
 
-function cerrarEvento(){
-  const evId = selEvento.value;
-  if (!evId) return;
-  if (!confirm('¿Cerrar asistencia? No permitirá nuevos registros.')) return;
-  showBusy('Cerrando evento…');
-  google.script.run
-    .withSuccessHandler((r)=>{
-      hideBusy();
-      if(r && r.ok){ alert('Evento cerrado.'); cargarEventos(); }
-      else alert('No se pudo cerrar el evento.');
-    })
-    .withFailureHandler((err)=>{
-      hideBusy();
-      console.error('[closeEvento] FALLÓ', err);
-      alert('Error al cerrar evento.');
-    })
-    .closeEvento(evId);
-}
-
-
 document.addEventListener('DOMContentLoaded', init);
-
-// Failsafe adicional: oculta overlay si no hay tareas pendientes
-setInterval(()=>{
-  if (Busy.get() === 0) Busy.reset();
-}, 8000);
 </script>

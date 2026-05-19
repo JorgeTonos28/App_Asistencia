@@ -1,141 +1,82 @@
+<!-- Tailwind CSS via CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Tailwind Config -->
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter', 'sans-serif'],
+        },
+        colors: {
+          primary: {
+            50: '#f0f9ff',
+            100: '#e0f2fe',
+            200: '#bae6fd',
+            300: '#7dd3fc',
+            400: '#38bdf8',
+            500: '#0ea5e9',
+            600: '#0284c7', // Main Blue
+            700: '#0369a1',
+            800: '#075985',
+            900: '#0c4a6e',
+          },
+          // Custom deep violet/indigo if you prefer
+          brand: {
+             50: '#f5f3ff',
+            100: '#ede9fe',
+            200: '#ddd6fe',
+            300: '#c4b5fd',
+            400: '#a78bfa',
+            500: '#8b5cf6',
+            600: '#7c3aed',
+            700: '#6d28d9',
+            800: '#5b21b6',
+            900: '#4c1d95',
+          }
+        },
+        animation: {
+          'fade-in': 'fadeIn 0.5s ease-out forwards',
+          'slide-up': 'slideUp 0.5s ease-out forwards',
+        },
+        keyframes: {
+          fadeIn: {
+            '0%': { opacity: '0' },
+            '100%': { opacity: '1' },
+          },
+          slideUp: {
+            '0%': { opacity: '0', transform: 'translateY(20px)' },
+            '100%': { opacity: '1', transform: 'translateY(0)' },
+          }
+        }
+      }
+    }
+  }
+</script>
+
 <style>
-  /* ——— Base ——— */
-  :root{
-    --purple:#5b21b6;
-    --border:#dcdcdc;
-    --text:#222;
-    --bg:#f6f7fb;
+  /* Custom Global Overrides */
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  #logoInfotep{ height:64px; }
+  /* Smooth scrolling */
+  html { scroll-behavior: smooth; }
 
-  body{
-    font-family: Inter, system-ui, Arial;
-    background:var(--bg);
-    color:var(--text);
+  /* Loader */
+  .loader {
+    border-top-color: #3B82F6;
+    -webkit-animation: spinner 1.5s linear infinite;
+    animation: spinner 1.5s linear infinite;
   }
 
-  .container{ max-width:1100px; margin:24px auto; padding:0 16px; }
-  .row{ display:flex; flex-wrap:wrap; gap:12px; }
-  .row.g{ gap:10px; align-items:center; }
-  .g > *{ flex:1 1 220px; min-width:200px; }
-
-  header, .card{
-    background:#fff; border-radius:12px; padding:16px; margin-bottom:16px;
-    box-shadow:0 1px 3px rgba(0,0,0,.08);
-  }
-
-  /* Inputs y botones base (para la mayoría de acciones moradas del sistema) */
-  input, select, button{
-    padding:10px 12px; border:1px solid #e1e1e8; border-radius:8px;
-  }
-  input, select{ width:100%; border:1px solid var(--border); border-radius:10px; }
-  button{
-    background:var(--purple); color:#fff; border:none; cursor:pointer;
-    padding:10px 14px; border-radius:10px;
-  }
-  button.secondary{ background:#6b7280; }
-
-  /* Tablas */
-  table{ width:100%; border-collapse:collapse; }
-  th, td{ padding:10px; border-bottom:1px solid #eee; font-size:14px; }
-  .ok{ color:#0a7a32; font-weight:600; }
-
-  /* ——— Overlays / Modal ——— */
-  .overlay{
-    position:fixed; inset:0; background:rgba(0,0,0,.35);
-    display:flex; align-items:center; justify-content:center; z-index:9999;
-    flex-direction:column; gap:12px; color:#fff; font-weight:600;
-  }
-  .overlay[hidden]{ display:none !important; }
-  .spinner{
-    width:48px; height:48px; border:4px solid #fff; border-top-color:transparent;
-    border-radius:50%; animation:spin 1s linear infinite;
-  }
-  @keyframes spin{ to{ transform:rotate(360deg);} }
-
-  .overlay .card{
-    background:#fff; color:#111; padding:16px 18px; border-radius:12px;
-    max-width:440px; box-shadow:0 8px 30px rgba(0,0,0,.25);
-  }
-  .overlay .card p{ color:#111; margin:0 0 12px; }
-  .overlay .card button{ background:var(--purple); color:#fff; border:none; border-radius:8px; padding:10px 14px; }
-
-  /* ——— Firma ——— */
-  .sig-wrap{ display:flex; justify-content:center; }
-  .sig{ width:100%; max-width:720px; height:190px; border:2px dashed #d1d5db; border-radius:12px; background:#fafafa; }
-  .sig-actions{ display:flex; gap:16px; justify-content:center; margin-top:12px; }
-  .sig-actions .btn{
-    min-width:160px; padding:12px 20px; border-radius:10px; border:1px solid var(--border); font-weight:600;
-  }
-  .btn-success{ background:#10b981; color:#fff; border-color:#10b981; }
-  .btn-danger{  background:#ef4444; color:#fff; border-color:#ef4444; }
-
-  /* ——— Botón pequeño con ícono (↺) junto al teléfono ——— */
-  .row.g.inputs-line{ align-items:flex-end; }
-
-  /* El ítem del icono NO debe heredar el flex/min-width de ".g > *" */
-  .inputs-line > .icon-btn{
-    flex: 0 0 36px !important;   /* no crecer, no encoger, base 36px */
-    min-width: 36px !important;  /* ← CANCELA el min-width:200px global */
-    width: 36px !important;
-    height: 36px !important;
-    padding: 0 !important;
-    margin-left: 4px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  /* estilo visual */
-  .icon-btn{ background:#fff; color:#374151; }
-  .icon-btn .ico{ font-size:18px; line-height:1; }
-  .icon-btn:hover{ background:#f9fafb; }
-  .icon-btn.purple{ background:var(--purple); border-color:var(--purple); color:#fff; }
-  .icon-btn.purple:hover{ filter:brightness(1.05); }
-
-  /* En móviles: que siga compacto a pesar de "button{width:100%}" del responsive */
-  @media (max-width:880px){
-    .inputs-line > .icon-btn{
-      width:36px !important; height:36px !important;
-    }
-  }
-
-  /* ——— Responsivo ——— */
-  @media (max-width:880px){
-    .g > *{ flex:1 1 100%; min-width:unset; }
-    header .row{ flex-direction:column; }
-    button{ width:100%; }
-  }
-  @media (max-width:480px){
-    body{ font-size:15px; }
-    .sig{ height:130px; }
-    #logoInfotep{ height:48px; }
-  }
-
-  /* ===== FIX RESPONSIVE STICKY ===== */
-  @media (max-width:880px){
-    /* Asegura 1-col y sin mínimos */
-    .g > *{
-      flex: 1 1 100% !important;
-      min-width: 0 !important;
-      max-width: 100% !important;
-    }
-    /* Inputs y selects realmente fluidos */
-    input, select{
-      width: 100% !important;
-      max-width: 100% !important;
-    }
-    /* Evita que otros estilos impongan anchos */
-    [class*="row"] > *{
-      box-sizing: border-box;
-      width: 100%;
-    }
-    /* Botones a ancho completo (excepto el iconito de 36px que ya aislamos) */
-    button{
-      width: 100% !important;
-    }
+  @keyframes spinner {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
   }
 </style>
